@@ -1,0 +1,32 @@
+Compose can now delegate builds to bake for better performance.
+ To do so, set COMPOSE_BAKE=true.
+#0 building with "default" instance using docker driver
+
+#1 [ttk-collector internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.51kB 0.0s done
+#1 DONE 0.0s
+
+#2 [ttk-collector internal] load metadata for docker.io/library/node:20-alpine
+#2 DONE 1.0s
+
+#3 [ttk-collector internal] load .dockerignore
+#3 transferring context: 2B 0.0s done
+#3 DONE 0.0s
+
+#4 [ttk-collector builder 1/9] FROM docker.io/library/node:20-alpine@sha256:c628bdc7ebc7f95b1b23249a445eb415ce68ae9def8b68364b35ee15e3065b0f
+#4 resolve docker.io/library/node:20-alpine@sha256:c628bdc7ebc7f95b1b23249a445eb415ce68ae9def8b68364b35ee15e3065b0f 0.0s done
+#4 DONE 0.0s
+
+#5 [ttk-collector builder 2/9] WORKDIR /app
+#5 CACHED
+
+#6 [ttk-collector internal] load build context
+#6 transferring context: 773.00kB 5.0s
+#6 transferring context: 854.48kB 10.1s
+#6 transferring context: 932.87kB 15.2s
+#6 transferring context: 1.02MB 20.3s
+#6 transferring context: 1.11MB 25.3s
+#6 transferring context: 1.19MB 30.3s
+#6 transferring context: 1.28MB 35.4s
+#6 transferring context: 1.37MB 40.4s
+#6 transferring context: 1.45MB 45.4s

@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model TiktokEvent {
+  id           String   @id @default(uuid())
+  eventId      String   @unique
+  timestamp    String
+  source       String   // Always "tiktok"
+  funnelStage  FunnelStage
+  eventType    String
+  user         TiktokUser   @relation(fields: [userId], references: [id])
+  userId       String
+  engagement   TiktokEngagement? // Just link, no fields/references here
+}
+
+model TiktokUser {
+  id         String @id @default(uuid())
+  userId     String
+  username   String
+  followers  Int
+  events     TiktokEvent[]
+}
+
+model TiktokEngagement {
+  id                String @id @default(uuid())
+  watchTime         Int?
+  percentageWatched Int?
+  device            String?
+  country           String?
+  videoId           String?
+
+  actionTime        String?
+  profileId         String?
+  purchasedItem     String?
+  purchaseAmount    String?
+
+  event             TiktokEvent @relation(fields: [eventId], references: [id])
+  eventId           String @unique
+}
+
+enum FunnelStage {
+  top
+  bottom
+}

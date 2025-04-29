@@ -1,0 +1,202 @@
+x-common-env: &common-env
+  PORT: 3000
+  NODE_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  CORRELATION_ID_HEADER: x-correlation-id
+  NATS_RECONNECT_TIMEOUT: 5000
+  NATS_MAX_RECONNECT_ATTEMPTS: 10
+  GRACEFUL_SHUTDOWN_TIMEOUT: 30000
+  PRISMA_LOG_QUERIES: "false"
+
+x-service-template: &service-template
+  restart: unless-stopped
+  networks:
+    - event-network
+  healthcheck:
+    test: ["CMD-SHELL", "curl -f http://localhost:${PORT}/health/liveness && curl -f http://localhost:${PORT}/health/readiness || exit 1"]
+    interval: 15s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
+  deploy:
+    resources:
+      limits:
+        cpus: '0.5'
+        memory: 512M
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+      tag: "{{.Name}}/{{.ID}}"
+
+services:
+  # --- Infrastructure Services ---
+  nats:
+    image: nats:2.9-alpine
+    command: "-js --sdv 1G"
+    ports:
+      - "4222:4222"
+    volumes:
+      - nats-data:/var/lib/nats
+    healthcheck:
+      test: ["CMD", "nats", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    <<: *service-template
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 1G
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: eventsdb
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/wait-for-db.sh:/docker-entrypoint-initdb.d/wait-for-db.sh
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d eventsdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    <<: *service-template
+
+  # --- Application Services ---
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    environment:
+      <<: *common-env
+      PORT: 3000
+      SERVICE_NAME: gateway
+      NATS_QUEUE_GROUP: gateway-group
+    ports:
+      - "3000:3000"
+    depends_on:
+      nats:
+        condition: service_healthy
+    <<: *service-template
+    command: >
+      sh -c "./wait-for-it.sh nats:4222 --timeout=30 --strict --                          
+             npm run start:prod"
+
+  fb-collector:  # <- Fixed name (removed extra 'f')
+    build:
+      context: ./fb-collector
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      PORT: 4001
+      SERVICE_NAME: fb-collector
+      NATS_QUEUE_GROUP: fb-collector-group
+      DATABASE_URL: postgresql://admin:admin@postgres:5432/eventsdb
+      NATS_URL: nats://nats:4222
+    ports:
+      - "4001:4001"
+    depends_on:
+      nats:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    <<: *service-template
+    command: >
+      sh -c "./wait-for-it.sh nats:4222 --timeout=30 --strict -- 
+             ./wait-for-it.sh postgres:5432 --timeout=30 --strict -- 
+             node dist/main.js"
+
+  ttk-collector:
+    build:
+      context: ./ttk-collector
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      PORT: 4002
+      DATABASE_URL: postgresql://admin:admin@postgres:5432/eventsdb
+      NATS_URL: nats://nats:4222
+    ports:
+      - "4002:4002"
+    depends_on:
+      nats:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    <<: *service-template
+    command: >
+      sh -c "./wait-for-it.sh nats:4222 --timeout=30 --strict -- 
+             ./wait-for-it.sh postgres:5432 --timeout=30 --strict -- 
+             npm run migration:deploy && 
+             node dist/main.js"
+
+  reporter:
+    build:
+      context: ./reporter
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      PORT: 4000
+      SERVICE_NAME: reporter
+      DATABASE_URL: postgresql://admin:admin@postgres:5432/eventsdb
+      NATS_URL: nats://nats:4222
+    ports:
+      - "4000:4000"
+    depends_on:
+      nats:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    <<: *service-template
+    command: >
+      sh -c "./wait-for-it.sh nats:4222 --timeout=30 --strict -- 
+             ./wait-for-it.sh postgres:5432 --timeout=30 --strict -- 
+             node dist/main.js"
+
+  # --- Monitoring ---
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    depends_on:
+      - gateway
+      - reporter
+    <<: *service-template
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    <<: *service-template
+
+volumes:
+  pgdata:
+  nats-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  event-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24

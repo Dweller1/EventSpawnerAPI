@@ -1,0 +1,96 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model FacebookEvent {
+  id               String                    @id @default(uuid()) @map("eventId")
+  timestamp        DateTime
+  source           String // always "facebook"
+  funnelStage      FunnelStage
+  eventType        FacebookEventType
+  userId           String
+  userName         String
+  userAge          Int
+  userGender       Gender
+  userCountry      String
+  userCity         String
+  engagementTop    FacebookEngagementTop? // optional
+  engagementBottom FacebookEngagementBottom? // optional
+}
+
+model FacebookEngagementTop {
+  id              Int           @id @default(autoincrement())
+  actionTime      DateTime
+  referrer        Referrer
+  videoId         String?
+  event           FacebookEvent @relation(fields: [facebookEventId], references: [id])
+  facebookEventId String        @unique
+}
+
+model FacebookEngagementBottom {
+  id              Int           @id @default(autoincrement())
+  adId            String
+  campaignId      String
+  clickPosition   ClickPosition
+  device          Device
+  browser         Browser
+  purchaseAmount  String?
+  event           FacebookEvent @relation(fields: [facebookEventId], references: [id])
+  facebookEventId String        @unique
+}
+
+enum FunnelStage {
+  top
+  bottom
+}
+
+enum FacebookEventType {
+  ad_view
+  page_like
+  comment
+  video_view
+  ad_click
+  form_submission
+  checkout_complete
+}
+
+enum Gender {
+  male
+  female
+  non_binary
+}
+
+enum Referrer {
+  newsfeed
+  marketplace
+  groups
+}
+
+enum ClickPosition {
+  top_left
+  bottom_right
+  center
+}
+
+enum Device {
+  mobile
+  desktop
+}
+
+enum Browser {
+  Chrome
+  Firefox
+  Safari
+}
