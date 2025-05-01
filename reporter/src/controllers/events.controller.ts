@@ -2,7 +2,8 @@
 import { Controller, Get, HttpException, HttpStatus, Query, UsePipes } from '@nestjs/common';
 import { EventsService } from './../services/events.filtering.service';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { ZodValidationPipe } from './../../ZodPipe/validation.pipe';
+//import { createZodValidationPipe, ZodValidationPipe } from './../ZodPipe/validation.pipe';
+  //@UsePipes(createZodValidationPipe(GetEventReportSchema))
 import { GetEventReportDto } from './../queryDTO/events.queryDTO';
 
 @ApiTags('Reports')
@@ -24,7 +25,6 @@ export class EventsController {
     status: 200,
     description: `Returns event statistics with breakdowns`
   })
-  @UsePipes(new ZodValidationPipe(GetEventReportDto))
   async getEventsReport(@Query() filters: GetEventReportDto) {
     try{
     return this.eventsService.getEventsReport(filters);

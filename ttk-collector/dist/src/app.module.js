@@ -9,17 +9,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const nats_client_module_1 = require("./nats-client/nats.client.module");
-const ttk_module_1 = require("./modules/ttk.module");
 const ttk_controller_1 = require("./controllers/ttk.controller");
 const ttk_service_1 = require("./services/ttk.service");
+const nats_client_service_1 = require("./nats-client/nats.client.service");
+const prisma_module_1 = require("../prisma/prisma.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [nats_client_module_1.NatsClientModule, ttk_module_1.ttkModule],
+        imports: [nats_client_module_1.NatsClientModule, prisma_module_1.PrismaModule],
         controllers: [ttk_controller_1.ttkMicroserviceController],
-        providers: [ttk_service_1.TiktokService],
+        providers: [ttk_service_1.TiktokService, nats_client_service_1.NatsClientService, common_1.Logger],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

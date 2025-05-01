@@ -6,7 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -16,7 +16,7 @@ datasource db {
 model TiktokEvent {
   id           String   @id @default(uuid())
   eventId      String   @unique
-  timestamp    String
+  timestamp    DateTime
   source       String   // Always "tiktok"
   funnelStage  FunnelStage
   eventType    String

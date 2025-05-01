@@ -2,7 +2,8 @@
 import { Controller, Get, HttpException, HttpStatus, Query, UsePipes } from '@nestjs/common';
 import { DemographicsService } from './../services/demo.filtering.service';
 import { GetDemographicReportDto } from './../queryDTO/demo.queryDTO';
-import { ZodValidationPipe } from './../../ZodPipe/validation.pipe';
+// import { createZodValidationPipe, ZodValidationPipe } from './../ZodPipe/validation.pipe';
+  //@UsePipes(createZodValidationPipe(GetDemographicReportSchema))
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Reports')
@@ -16,7 +17,6 @@ export class DemographicsController {
   @ApiQuery({ name: 'to', required: false, type: String })
   @ApiQuery({ name: 'source', required: false, enum: ['facebook', 'tiktok'] })
   @ApiResponse({ status: 200, description: 'Demographics data retrieved successfully' })
-  @UsePipes(new ZodValidationPipe(GetDemographicReportDto))
   async getDemographicsReport(@Query() filters: GetDemographicReportDto) {
     try{
     return this.demographicsService.getReport(filters);

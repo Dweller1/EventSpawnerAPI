@@ -22,8 +22,8 @@ x-service-template: &service-template
   deploy:
     resources:
       limits:
-        cpus: '0.5'
-        memory: 512M
+        cpus: '1'
+        memory: 2gb
   logging:
     driver: json-file
     options:
@@ -34,34 +34,43 @@ x-service-template: &service-template
 services:
   # --- Infrastructure Services ---
   nats:
-    image: nats:2.9-alpine
-    command: "-js --sdv 1G"
-    ports:
-      - "4222:4222"
-    volumes:
-      - nats-data:/var/lib/nats
-    healthcheck:
-      test: ["CMD", "nats", "ping"]
+    image: nats:latest
+    ports: 
+      - 4222:4222
+    healthcheck: 
+      test: ["CMD-SHELL", "nats-ping || exit 1"]
       interval: 10s
+      timeout: 3s
+      retries: 3
+
+  publisher:
+    image: andriiuni/events:latest
+    platform: linux/amd64
+    environment:
+      EVENT_ENDPOINT: http://gateway:3000/webhook
+      PUBLISH_INTERVAL: "5000"  # ms between events
+    depends_on:
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
       timeout: 5s
-      retries: 5
-    <<: *service-template
-    deploy:
-      resources:
-        limits:
-          cpus: '0.75'
-          memory: 1G
+      retries: 3  
+  
 
   postgres:
     image: postgres:14-alpine
     environment:
+      LANG: en_US.utf8
+      LC_ALL: en_US.utf8
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: eventsdb
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./scripts/wait-for-db.sh:/docker-entrypoint-initdb.d/wait-for-db.sh
+      - ./scripts/wait-for-it/wait-for-db.sh:/docker-entrypoint-initdb.d/wait-for-db.sh
     ports:
       - "5432:5432"
     healthcheck:
@@ -81,6 +90,7 @@ services:
     environment:
       <<: *common-env
       PORT: 3000
+      EVENT_ENDPOINT: /webhook
       SERVICE_NAME: gateway
       NATS_QUEUE_GROUP: gateway-group
     ports:
@@ -164,35 +174,10 @@ services:
              node dist/main.js"
 
   # --- Monitoring ---
-  prometheus:
-    image: prom/prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
-    depends_on:
-      - gateway
-      - reporter
-    <<: *service-template
-
-  grafana:
-    image: grafana/grafana
-    ports:
-      - "3001:3000"
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards
-    depends_on:
-      prometheus:
-        condition: service_healthy
-    <<: *service-template
 
 volumes:
   pgdata:
   nats-data:
-  prometheus-data:
-  grafana-data:
 
 networks:
   event-network:

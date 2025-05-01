@@ -8,17 +8,17 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var TiktokService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TiktokService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("./../../prisma/prisma.service");
 const database_error_1 = require("../errors/database.error");
-let TiktokService = class TiktokService {
+let TiktokService = TiktokService_1 = class TiktokService {
     prisma;
-    logger;
-    constructor(prisma, logger) {
+    logger = new common_1.Logger(TiktokService_1.name);
+    constructor(prisma) {
         this.prisma = prisma;
-        this.logger = logger;
     }
     async saveEvent(data) {
         this.logger.debug(`Processing TikTok event: ${data.eventId}`);
@@ -81,9 +81,8 @@ let TiktokService = class TiktokService {
     }
 };
 exports.TiktokService = TiktokService;
-exports.TiktokService = TiktokService = __decorate([
+exports.TiktokService = TiktokService = TiktokService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        common_1.Logger])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], TiktokService);
 //# sourceMappingURL=ttk.service.js.map

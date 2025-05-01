@@ -6,8 +6,10 @@ WORKDIR /app
 COPY package*.json ./
 
 # 2. Install dependencies
-RUN npm ci
+RUN npm ci 
 
+COPY prisma/schema.prisma ./prisma/
+RUN npx prisma generate
 # 3. Copy remaining files
 COPY . .
 
@@ -27,6 +29,7 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/scripts ./scripts
+
 
 # Runtime setup
 RUN apk add --no-cache tini && \

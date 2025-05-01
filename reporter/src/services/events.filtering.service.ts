@@ -58,7 +58,7 @@ constructor(private readonly prisma: PrismaService){}
     });
 
     // Get time series data (events per day)
-    const timeSeriesQuery = await this.prisma.$queryRaw`
+    const timeSeriesQuery = await this.prisma.$queryRaw<any>`
   SELECT 
     DATE(timestamp) as date,
     COUNT(*) as count

@@ -5,9 +5,9 @@ import { DatabaseError } from '../errors/database.error';
 
 @Injectable()
 export class TiktokService {
+  private readonly logger = new Logger(TiktokService.name);
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly logger: Logger
+    private readonly prisma: PrismaService
   ) {}
 
   async saveEvent(data: TiktokEvent) {

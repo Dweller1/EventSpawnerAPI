@@ -1,25 +1,26 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
 import { ClientProxy } from "@nestjs/microservices";
-import { catchError, firstValueFrom, timeout } from "rxjs"
+import { firstValueFrom } from "rxjs";
 
 @Injectable()
-export class NatsClientService {
+export class NatsClientService implements OnModuleInit {
   constructor(@Inject('NATS_SERVICE') private readonly client: ClientProxy) {}
 
-  // In NatsClientService
-async publish(pattern: string, data: any) {
-  try {
-    await firstValueFrom(
-      this.client.emit(pattern, data).pipe(
-        timeout(5000), // Add timeout
-        catchError(err => {
-          throw new Error(`Publish to ${pattern} failed: ${err.message}`);
-        })
-      )
-    );
-  } catch (err) {
-    // Use structured logging
-    throw new Error(`NATS publish failed: ${err.message}`);
+  async onModuleInit() {
+    await this.client.connect();
   }
-}
+
+  async publish(pattern: string, data: any) {
+    try {
+      await firstValueFrom(this.client.emit(pattern, data));
+    } catch (err) {
+      console.error('NATS publish error:', err);
+      throw err;
+    }
+  }
+
+  // Add for request-response pattern if needed
+  async send<T>(pattern: string, data: any): Promise<T> {
+    return firstValueFrom(this.client.send<T>(pattern, data));
+  }
 }

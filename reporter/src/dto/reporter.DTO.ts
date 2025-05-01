@@ -1,121 +1,258 @@
-import { z } from "zod";
+// report.dtos.ts
+import { 
+  IsString, 
+  IsNumber, 
+  IsEnum, 
+  IsOptional, 
+  IsDateString, 
+  ValidateNested 
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
-// Reusable enums and types
-const FunnelStageEnum = z.enum(["top", "bottom"]);
-const FacebookSource = z.literal("facebook");
-const FacebookEventTypeEnum = z.enum([
-  "ad.view",
-  "page.like",
-  "comment",
-  "video.view",
-  "ad.click",
-  "form.submission",
-  "checkout.complete",
-]);
+// ==================== Shared Enums ====================
+export enum Source {
+  FACEBOOK = 'facebook',
+  TIKTOK = 'tiktok'
+}
 
-export const FacebookUserLocation = z.object({
-  country: z.string(),
-  city: z.string(),
-});
+export enum FunnelStage {
+  TOP = 'top',
+  BOTTOM = 'bottom'
+}
 
-export const FacebookUser = z.object({
-  userId: z.string(),
-  name: z.string(),
-  age: z.number(),
-  gender: z.enum(["male", "female", "non-binary"]),
-  location: FacebookUserLocation,
-});
+export enum Gender {
+  MALE = 'male',
+  FEMALE = 'female',
+  NON_BINARY = 'non-binary'
+}
 
-// Engagement schemas
-export const FacebookEngagementTop = z.object({
-  actionTime: z.string(),
-  referrer: z.enum(["newsfeed", "marketplace", "groups"]),
-  videoId: z.string().nullable(),
-});
+export enum FacebookReferrer {
+  NEWSFEED = 'newsfeed',
+  MARKETPLACE = 'marketplace',
+  GROUPS = 'groups'
+}
 
-export const FacebookEngagementBottom = z.object({
-  adId: z.string(),
-  campaignId: z.string(),
-  clickPosition: z.enum(["top_left", "bottom_right", "center"]),
-  device: z.enum(["mobile", "desktop"]),
-  browser: z.enum(["Chrome", "Firefox", "Safari"]),
-  purchaseAmount: z.string().nullable(),
-});
+export enum ClickPosition {
+  TOP_LEFT = 'top_left',
+  BOTTOM_RIGHT = 'bottom_right',
+  CENTER = 'center'
+}
 
-// Full event schema
-export const FacebookEventSchema = z.object({
-  eventId: z.string(),
-  timestamp: z.string(),
-  source: FacebookSource,
-  funnelStage: FunnelStageEnum,
-  eventType: FacebookEventTypeEnum,
-  data: z.object({
-    user: FacebookUser,
-    engagement: z.union([FacebookEngagementTop, FacebookEngagementBottom]),
-  }),
-});
+export enum Device {
+  MOBILE = 'mobile',
+  DESKTOP = 'desktop'
+}
 
+export enum Browser {
+  CHROME = 'Chrome',
+  FIREFOX = 'Firefox',
+  SAFARI = 'Safari'
+}
 
-// 🔥 Funnel Stage (separate)
-export const FunnelStage = z.enum(["top", "bottom"]);
+export enum FacebookEventType {
+  AD_VIEW = 'ad.view',
+  PAGE_LIKE = 'page.like',
+  COMMENT = 'comment',
+  VIDEO_VIEW = 'video.view',
+  AD_CLICK = 'ad.click',
+  FORM_SUBMISSION = 'form.submission',
+  CHECKOUT_COMPLETE = 'checkout.complete'
+}
 
-// 🔥 Top and Bottom event types separated
-export const TiktokTopEventType = z.enum([
-  "video.view",
-  "like",
-  "share",
-  "comment"
-]);
+export enum TiktokTopEventType {
+  VIDEO_VIEW = 'video.view',
+  LIKE = 'like',
+  SHARE = 'share',
+  COMMENT = 'comment'
+}
 
-export const TiktokBottomEventType = z.enum([
-  "profile.visit",
-  "purchase",
-  "follow"
-]);
+export enum TiktokBottomEventType {
+  PROFILE_VISIT = 'profile.visit',
+  PURCHASE = 'purchase',
+  FOLLOW = 'follow'
+}
 
-export const TiktokEventType = z.union([
-  TiktokTopEventType,
-  TiktokBottomEventType
-]);
+export enum TiktokDevice {
+  ANDROID = 'Android',
+  IOS = 'iOS',
+  DESKTOP = 'Desktop'
+}
 
-// 🔥 User schema
-export const TiktokUserSchema = z.object({
-  userId: z.string(),
-  username: z.string(),
-  followers: z.number(),
-});
+// ==================== Shared DTOs ====================
+export class UserLocationDto {
+  @IsString()
+  country: string;
 
-// 🔥 Engagement schemas separated
-export const TiktokEngagementTopSchema = z.object({
-  watchTime: z.number(),
-  percentageWatched: z.number(),
-  device: z.enum(["Android", "iOS", "Desktop"]),
-  country: z.string(),
-  videoId: z.string(),
-});
+  @IsString()
+  city: string;
+}
 
-export const TiktokEngagementBottomSchema = z.object({
-  actionTime: z.string(),
-  profileId: z.string().nullable(),
-  purchasedItem: z.string().nullable(),
-  purchaseAmount: z.string().nullable(),
-});
+// ==================== Facebook DTOs ====================
+export class FacebookUserDto {
+  @IsString()
+  userId: string;
 
-export const TiktokEngagement = z.union([TiktokEngagementBottomSchema, TiktokEngagementTopSchema])
+  @IsString()
+  name: string;
 
-// 🔥 Full Tiktok Event Schema (funnelStage now separate)
-export const TiktokEventSchema = z.object({
-  eventId: z.string(),
-  timestamp: z.string(),
-  source: z.literal("tiktok"),
-  funnelStage: FunnelStage, // Separate funnelStage
-  eventType: TiktokEventType,
-  data: z.object({
-    user: TiktokUserSchema,
-    engagement: TiktokEngagement,
-  }),
-});
-export const ReporterType = z.union([TiktokEventSchema, FacebookEventSchema])
+  @IsNumber()
+  age: number;
 
-// 🔥 Types (if needed)
-export type ReportDTO = z.infer<typeof ReporterType>;
+  @IsEnum(Gender)
+  gender: Gender;
+
+  @ValidateNested()
+  @Type(() => UserLocationDto)
+  location: UserLocationDto;
+}
+
+export class FacebookEngagementTopDto {
+  @IsString()
+  actionTime: string;
+
+  @IsEnum(FacebookReferrer)
+  referrer: FacebookReferrer;
+
+  @IsString()
+  @IsOptional()
+  videoId: string | null;
+}
+
+export class FacebookEngagementBottomDto {
+  @IsString()
+  adId: string;
+
+  @IsString()
+  campaignId: string;
+
+  @IsEnum(ClickPosition)
+  clickPosition: ClickPosition;
+
+  @IsEnum(Device)
+  device: Device;
+
+  @IsEnum(Browser)
+  browser: Browser;
+
+  @IsString()
+  @IsOptional()
+  purchaseAmount: string | null;
+}
+
+export class FacebookEventDto {
+  @IsString()
+  eventId: string;
+
+  @IsString()
+  @IsDateString()
+  timestamp: string;
+
+  @IsEnum(Source)
+  source: Source.FACEBOOK;
+
+  @IsEnum(FunnelStage)
+  funnelStage: FunnelStage;
+
+  @IsEnum(FacebookEventType)
+  eventType: FacebookEventType;
+
+  @ValidateNested()
+  @Type(() => FacebookUserDto)
+  user: FacebookUserDto;
+
+  @ValidateNested()
+  @Type(() => FacebookEngagementTopDto)
+  @Type(() => FacebookEngagementBottomDto)
+  engagement: FacebookEngagementTopDto | FacebookEngagementBottomDto;
+}
+
+// ==================== TikTok DTOs ====================
+export class TiktokUserDto {
+  @IsString()
+  userId: string;
+
+  @IsString()
+  username: string;
+
+  @IsNumber()
+  followers: number;
+}
+
+export class TiktokEngagementTopDto {
+  @IsNumber()
+  watchTime: number;
+
+  @IsNumber()
+  percentageWatched: number;
+
+  @IsEnum(TiktokDevice)
+  device: TiktokDevice;
+
+  @IsString()
+  country: string;
+
+  @IsString()
+  videoId: string;
+}
+
+export class TiktokEngagementBottomDto {
+  @IsString()
+  actionTime: string;
+
+  @IsString()
+  @IsOptional()
+  profileId: string | null;
+
+  @IsString()
+  @IsOptional()
+  purchasedItem: string | null;
+
+  @IsString()
+  @IsOptional()
+  purchaseAmount: string | null;
+}
+
+export class TiktokEventDto {
+  @IsString()
+  eventId: string;
+
+  @IsString()
+  @IsDateString()
+  timestamp: string;
+
+  @IsEnum(Source)
+  source: Source.TIKTOK;
+
+  @IsEnum(FunnelStage)
+  funnelStage: FunnelStage;
+
+  @IsEnum([...Object.values(TiktokTopEventType), ...Object.values(TiktokBottomEventType)])
+  eventType: TiktokTopEventType | TiktokBottomEventType;
+
+  @ValidateNested()
+  @Type(() => TiktokUserDto)
+  user: TiktokUserDto;
+
+  @ValidateNested()
+  @Type(() => TiktokEngagementTopDto)
+  @Type(() => TiktokEngagementBottomDto)
+  engagement: TiktokEngagementTopDto | TiktokEngagementBottomDto;
+}
+
+// ==================== Union Type ====================
+export type ReportDto = FacebookEventDto | TiktokEventDto;
+
+export class ReporterDto {
+  @ValidateNested()
+  @Type(() => FacebookEventDto, {
+    discriminator: {
+      property: 'source',
+      subTypes: [
+        { value: FacebookEventDto, name: Source.FACEBOOK },
+        { value: TiktokEventDto, name: Source.TIKTOK }
+      ]
+    },
+    keepDiscriminatorProperty: true
+  })
+  data: ReportDto;
+}

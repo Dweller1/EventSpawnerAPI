@@ -8,7 +8,7 @@ import { NatsClientService } from './nats-client/nats.client.service';
 import { WebhookController } from './webhooks/webhook.controller';
 
 @Module({
-  imports: [GatewayModule, NatsClientModule],
+  imports: [ NatsClientModule],
   controllers: [WebhookController],
   providers: [EventProcessorService,TransformationService, NatsClientService],
 })

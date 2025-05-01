@@ -8,11 +8,16 @@ import { NatsClientService } from "./nats.client.service";
             name: 'NATS_SERVICE',
             transport: Transport.NATS,
             options: {
-              servers:['nats://nats']
+              servers:['nats://nats'],
+              reconnect: true,
+              maxReconnectAttempts: -1,
             }
           }])
     ],
     providers:[NatsClientService],
-    exports:[NatsClientService]
+    exports: [
+      ClientsModule, // Critical - exports the configured clients
+      NatsClientService
+    ]
 })
 export class NatsClientModule {}

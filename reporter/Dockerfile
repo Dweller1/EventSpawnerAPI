@@ -4,16 +4,17 @@ WORKDIR /app
 
 # 1. Copy dependency files first for caching
 COPY package*.json ./
-COPY prisma/schema.prisma ./prisma/
+
 
 # 2. Install dependencies and generate Prisma client
-RUN npm ci && npx prisma generate
+RUN npm ci 
+
+COPY prisma/schema.prisma ./prisma/
+RUN npx prisma generate
+
 
 # 3. Copy all source files including ZodPipe
-COPY src ./src
-COPY ZodPipe ./ZodPipe
-COPY tsconfig*.json ./
-COPY nest-cli.json ./
+COPY . .
 
 # 4. Build application
 RUN npm run build && \
@@ -31,7 +32,6 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/prisma ./prisma
 
 # 3. Runtime setup
 RUN apk add --no-cache tini && \

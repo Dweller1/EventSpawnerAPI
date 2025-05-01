@@ -2,7 +2,8 @@
 import { Controller, Get, HttpException, HttpStatus, Query, UsePipes } from '@nestjs/common';
 import { RevenueService } from './../services/revenue.filtering.service';
 import { GetRevenueReportDto } from './../queryDTO/revenue.query.DTO';
-import { ZodValidationPipe } from './../../ZodPipe/validation.pipe';
+//import { createZodValidationPipe, ZodValidationPipe } from './../ZodPipe/validation.pipe';
+//@UsePipes(createZodValidationPipe(GetRevenueReportSchema))
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Reports')
@@ -42,7 +43,6 @@ export class RevenueController {
     status: 200, 
     description: 'Revenue report generated successfully'
   })
-  @UsePipes(new ZodValidationPipe(GetRevenueReportDto))
   async getRevenueReport(@Query() filters: GetRevenueReportDto) {
     try{
     return this.revenueService.getRevenueReport(filters);

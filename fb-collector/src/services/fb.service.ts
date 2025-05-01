@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from './../../prisma/prisma.service';
 import { FacebookEvent } from './../dtos/fb.dto';
-import { DatabaseError } from '../errors/database.error'; // Custom error class
+import { DatabaseError } from '../errors/database.error';
 
 @Injectable()
 export class FbService {
@@ -12,60 +12,72 @@ export class FbService {
   async saveEvent(data: FacebookEvent): Promise<void> {
     if (data.source !== 'facebook') {
       this.logger.warn(`Skipping non-Facebook event: ${data.eventId}`);
-      return; 
-    }
-
-    // 1. Check for duplicate event first
-    const existingEvent = await this.prisma.facebookEvent.findUnique({
-      where: { id: data.eventId }
-    });
-
-    if (existingEvent) {
-      this.logger.warn(`Duplicate event detected: ${data.eventId}`);
       return;
     }
 
     try {
-      // 2. Process in transaction
       await this.prisma.$transaction(async (tx) => {
-        // 3. Narrow type for engagement data
-        const engagementData = 'actionTime' in data.data.engagement 
-          ? {
-              actionTime: new Date(data.data.engagement.actionTime),
-              referrer: data.data.engagement.referrer,
-              videoId: data.data.engagement.videoId,
-            }
-          : {
-              adId: data.data.engagement.adId,
-              campaignId: data.data.engagement.campaignId,
-              clickPosition: data.data.engagement.clickPosition,
-              device: data.data.engagement.device,
-              browser: data.data.engagement.browser,
-              purchaseAmount: data.data.engagement.purchaseAmount,
-            };
-
-        // 4. Create with all relations atomically
-        await tx.facebookEvent.create({
-          data: {
-            id: data.eventId,
-            timestamp: new Date(data.timestamp),
-            source: data.source,
-            funnelStage: data.funnelStage,
-            eventType: data.eventType,
-            userId: data.data.user.userId,
-            userName: data.data.user.name,
-            userAge: data.data.user.age,
-            userGender: data.data.user.gender,
-            userCountry: data.data.user.location.country,
-            userCity: data.data.user.location.city,
-            engagementTop: 'actionTime' in data.data.engagement 
-              ? { create: engagementData }
-              : undefined,
-            engagementBottom: 'actionTime' in data.data.engagement
-              ? undefined
-              : { create: engagementData },
-          },
+        // Check for duplicate event
+        const existingEvent = await tx.facebookEvent.findUnique({
+          where: { id: data.eventId }
         });
+
+        if (existingEvent) {
+          this.logger.warn(`Duplicate event detected: ${data.eventId}`);
+          return;
+        }
+
+        // Base event data
+        const eventData = {
+          id: data.eventId,
+          timestamp: new Date(data.timestamp),
+          source: data.source,
+          funnelStage: data.funnelStage,
+          eventType: data.eventType,
+          userId: data.data.user.userId,
+          userName: data.data.user.name,
+          userAge: data.data.user.age,
+          userGender: data.data.user.gender,
+          userCountry: data.data.user.location.country,
+          userCity: data.data.user.location.city,
+        };
+
+        if (data.funnelStage === 'top') {
+          const topEngagement = data.data.engagement;
+          if ('actionTime' in topEngagement) {
+            await tx.facebookEvent.create({
+              data: {
+                ...eventData,
+                engagementTop: {
+                  create: {
+                    actionTime: new Date(topEngagement.actionTime),
+                    referrer: topEngagement.referrer,
+                    videoId: topEngagement.videoId || null,
+                  }
+                }
+              }
+            });
+          }
+        } else {
+          const bottomEngagement = data.data.engagement;
+          if ('adId' in bottomEngagement) {
+            await tx.facebookEvent.create({
+              data: {
+                ...eventData,
+                engagementBottom: {
+                  create: {
+                    adId: bottomEngagement.adId,
+                    campaignId: bottomEngagement.campaignId,
+                    clickPosition: bottomEngagement.clickPosition,
+                    device: bottomEngagement.device,
+                    browser: bottomEngagement.browser,
+                    purchaseAmount: bottomEngagement.purchaseAmount || null,
+                  }
+                }
+              }
+            });
+          }
+        }
 
         this.logger.log(`Event saved successfully: ${data.eventId}`);
       });

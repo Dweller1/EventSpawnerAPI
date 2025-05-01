@@ -20,12 +20,17 @@ exports.NatsClientModule = NatsClientModule = __decorate([
                     name: 'NATS_SERVICE',
                     transport: microservices_1.Transport.NATS,
                     options: {
-                        servers: ['nats://nats']
+                        servers: ['nats://nats'],
+                        reconnect: true,
+                        maxReconnectAttempts: -1,
                     }
                 }])
         ],
         providers: [nats_client_service_1.NatsClientService],
-        exports: [nats_client_service_1.NatsClientService]
+        exports: [
+            microservices_1.ClientsModule,
+            nats_client_service_1.NatsClientService
+        ]
     })
 ], NatsClientModule);
 //# sourceMappingURL=nats.client.module.js.map

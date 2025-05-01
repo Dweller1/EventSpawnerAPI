@@ -21,8 +21,20 @@ let NatsClientService = class NatsClientService {
     constructor(client) {
         this.client = client;
     }
+    async onModuleInit() {
+        await this.client.connect();
+    }
     async publish(pattern, data) {
-        return (0, rxjs_1.firstValueFrom)(this.client.emit(pattern, data));
+        try {
+            await (0, rxjs_1.firstValueFrom)(this.client.emit(pattern, data));
+        }
+        catch (err) {
+            console.error('NATS publish error:', err);
+            throw err;
+        }
+    }
+    async send(pattern, data) {
+        return (0, rxjs_1.firstValueFrom)(this.client.send(pattern, data));
     }
 };
 exports.NatsClientService = NatsClientService;

@@ -1,43 +1,88 @@
 // src/reporter/reporter.service.ts
 import { Injectable } from '@nestjs/common';
 import { 
-  ReportDTO, 
-  FacebookEventSchema, 
-  TiktokEventSchema,
-  FacebookEngagementTop,
-  FacebookEngagementBottom,
-  TiktokEngagementTopSchema,
-  TiktokEngagementBottomSchema
+  ReportDto, 
+  FacebookEventDto, 
+  TiktokEventDto,
+  FacebookEngagementTopDto,
+  FacebookEngagementBottomDto,
+  TiktokEngagementTopDto,
+  TiktokEngagementBottomDto,
+  Source,
+  FunnelStage,
+  Gender,
+  FacebookReferrer,
+  ClickPosition,
+  Device,
+  TiktokDevice
 } from '../dto/reporter.DTO';
-import { z } from 'zod';
 import { PrismaService } from './../../prisma/prisma.service';
 
 @Injectable()
 export class ReporterService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private mapGender(gender: Gender): 'male' | 'female' | 'non_binary' {
+    switch(gender) {
+      case Gender.MALE: return 'male';
+      case Gender.FEMALE: return 'female';
+      case Gender.NON_BINARY: return 'non_binary';
+      default: throw new Error(`Invalid gender: ${gender}`);
+    }
+  }
+
+  private mapReferrer(referrer: FacebookReferrer): 'newsfeed' | 'marketplace' | 'groups' {
+    switch(referrer) {
+      case FacebookReferrer.NEWSFEED: return 'newsfeed';
+      case FacebookReferrer.MARKETPLACE: return 'marketplace';
+      case FacebookReferrer.GROUPS: return 'groups';
+      default: throw new Error(`Invalid referrer: ${referrer}`);
+    }
+  }
+
+  private mapClickPosition(position: ClickPosition): 'top_left' | 'bottom_right' | 'center' {
+    switch(position) {
+      case ClickPosition.TOP_LEFT: return 'top_left';
+      case ClickPosition.BOTTOM_RIGHT: return 'bottom_right';
+      case ClickPosition.CENTER: return 'center';
+      default: throw new Error(`Invalid click position: ${position}`);
+    }
+  }
+
+  private mapDevice(device: Device): 'mobile' | 'desktop' {
+    switch(device) {
+      case Device.MOBILE: return 'mobile';
+      case Device.DESKTOP: return 'desktop';
+      default: throw new Error(`Invalid device: ${device}`);
+    }
+  }
+
+  private mapTiktokDevice(device: TiktokDevice): 'Android' | 'iOS' | 'Desktop' {
+    switch(device) {
+      case TiktokDevice.ANDROID: return 'Android';
+      case TiktokDevice.IOS: return 'iOS';
+      case TiktokDevice.DESKTOP: return 'Desktop';
+      default: throw new Error(`Invalid Tiktok device: ${device}`);
+    }
+  }
     
-  async handleIncomingEvent(event: ReportDTO) {
+  async handleIncomingEvent(event: ReportDto) {
     try {
-      if (event.source === 'facebook') {
-        const parsedEvent = FacebookEventSchema.parse(event);
-        await this.handleFacebookEvent(parsedEvent);
-      } else if (event.source === 'tiktok') {
-        const parsedEvent = TiktokEventSchema.parse(event);
-        await this.handleTiktokEvent(parsedEvent);
+      if (isFacebookEvent(event)) {
+        await this.handleFacebookEvent(event);
+      } else if (isTiktokEvent(event)) {
+        await this.handleTiktokEvent(event);
       } else {
-        throw new Error(`Unsupported source: ${(event as {source: string}).source}`);
+        throw new Error(`Unsupported event type`);
       }
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        console.error('Validation error:', error.errors);
-        throw new Error(`Invalid event data: ${error.message}`);
-      }
+      console.error('Error processing event:', error);
       throw error;
     }
   }
 
-  private async handleFacebookEvent(event: z.infer<typeof FacebookEventSchema>) {
-    const { user, engagement } = event.data;
+  private async handleFacebookEvent(event: FacebookEventDto) {
+    const { user, engagement } = event;
 
     // Create Facebook User
     const facebookUser = await this.prisma.facebookUser.create({
@@ -45,7 +90,7 @@ export class ReporterService {
         userId: user.userId,
         name: user.name,
         age: user.age,
-        gender: user.gender === 'non-binary' ? 'non_binary' : user.gender,
+        gender: this.mapGender(user.gender),
         country: user.location.country,
         city: user.location.city,
       },
@@ -53,23 +98,25 @@ export class ReporterService {
 
     // Create Facebook Engagement based on funnel stage
     let facebookEngagement;
-    if (event.funnelStage === 'top') {
-      const topEngagement = FacebookEngagementTop.parse(engagement);
+    if (event.funnelStage === FunnelStage.TOP) {
+      const topEngagement = engagement as FacebookEngagementTopDto;
       facebookEngagement = await this.prisma.facebookEngagement.create({
         data: {
           actionTime: new Date(topEngagement.actionTime),
-          referrer: topEngagement.referrer,
+          referrer: topEngagement.referrer ? this.mapReferrer(topEngagement.referrer) : null,
           videoId: topEngagement.videoId || null,
         },
       });
     } else {
-      const bottomEngagement = FacebookEngagementBottom.parse(engagement);
+      const bottomEngagement = engagement as FacebookEngagementBottomDto;
       facebookEngagement = await this.prisma.facebookEngagement.create({
         data: {
           adId: bottomEngagement.adId,
           campaignId: bottomEngagement.campaignId,
-          clickPosition: bottomEngagement.clickPosition,
-          device: bottomEngagement.device,
+          clickPosition: bottomEngagement.clickPosition ? 
+            this.mapClickPosition(bottomEngagement.clickPosition) : null,
+          device: bottomEngagement.device ? 
+            this.mapDevice(bottomEngagement.device) : null,
           browser: bottomEngagement.browser,
           purchaseAmount: bottomEngagement.purchaseAmount || null,
         },
@@ -90,8 +137,8 @@ export class ReporterService {
     });
   }
 
-  private async handleTiktokEvent(event: z.infer<typeof TiktokEventSchema>) {
-    const { user, engagement } = event.data;
+  private async handleTiktokEvent(event: TiktokEventDto) {
+    const { user, engagement } = event;
 
     // Create Tiktok User
     const tiktokUser = await this.prisma.tiktokUser.create({
@@ -104,19 +151,20 @@ export class ReporterService {
 
     // Create Tiktok Engagement based on funnel stage
     let tiktokEngagement;
-    if (event.funnelStage === 'top') {
-      const topEngagement = TiktokEngagementTopSchema.parse(engagement);
+    if (event.funnelStage === FunnelStage.TOP) {
+      const topEngagement = engagement as TiktokEngagementTopDto;
       tiktokEngagement = await this.prisma.tiktokEngagement.create({
         data: {
           watchTime: topEngagement.watchTime,
           percentageWatched: topEngagement.percentageWatched,
-          device: topEngagement.device,
+          device: topEngagement.device ? 
+            this.mapTiktokDevice(topEngagement.device) : null,
           country: topEngagement.country,
           videoId: topEngagement.videoId,
         },
       });
     } else {
-      const bottomEngagement = TiktokEngagementBottomSchema.parse(engagement);
+      const bottomEngagement = engagement as TiktokEngagementBottomDto;
       tiktokEngagement = await this.prisma.tiktokEngagement.create({
         data: {
           actionTime: new Date(bottomEngagement.actionTime),
@@ -140,4 +188,13 @@ export class ReporterService {
       },
     });
   }
+}
+
+// Type guards
+function isFacebookEvent(event: ReportDto): event is FacebookEventDto {
+  return event.source === Source.FACEBOOK;
+}
+
+function isTiktokEvent(event: ReportDto): event is TiktokEventDto {
+  return event.source === Source.TIKTOK;
 }

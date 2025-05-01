@@ -39,7 +39,7 @@ exports.TiktokEngagementBottomSchema = zod_1.z.object({
 exports.TiktokEngagement = zod_1.z.union([exports.TiktokEngagementBottomSchema, exports.TiktokEngagementTopSchema]);
 exports.TiktokEventSchema = zod_1.z.object({
     eventId: zod_1.z.string(),
-    timestamp: zod_1.z.string(),
+    timestamp: zod_1.z.string().datetime(),
     source: zod_1.z.literal("tiktok"),
     funnelStage: exports.FunnelStage,
     eventType: exports.TiktokEventType,

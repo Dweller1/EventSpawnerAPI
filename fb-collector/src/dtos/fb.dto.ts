@@ -1,11 +1,12 @@
+// src/dtos/fb.dto.ts
 import { z } from "zod";
 
-// Reusable enums and types
+// Reusable enums and types - aligned with Prisma schema
 const FunnelStageEnum = z.enum(["top", "bottom"]);
 const FacebookSource = z.literal("facebook");
 const FacebookEventTypeEnum = z.enum([
   "ad_view",
-  "page-like",
+  "page_like",  // Changed from "page-like" to match Prisma
   "comment",
   "video_view",
   "ad_click",
@@ -22,7 +23,7 @@ export const FacebookUser = z.object({
   userId: z.string(),
   name: z.string(),
   age: z.number(),
-  gender: z.enum(["male", "female", "non-binary"]),
+  gender: z.enum(["male", "female", "non_binary"]), // Changed to match Prisma
   location: FacebookUserLocation,
 });
 
@@ -45,7 +46,7 @@ const FacebookEngagementBottom = z.object({
 // Full event schema
 export const FacebookEventSchema = z.object({
   eventId: z.string(),
-  timestamp: z.string().datetime().refine(val => !isNaN(Date.parse(val))),
+  timestamp: z.string().datetime(),
   source: FacebookSource,
   funnelStage: FunnelStageEnum,
   eventType: FacebookEventTypeEnum,
@@ -55,5 +56,4 @@ export const FacebookEventSchema = z.object({
   }),
 });
 
-// Type
 export type FacebookEvent = z.infer<typeof FacebookEventSchema>;

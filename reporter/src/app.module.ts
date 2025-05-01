@@ -10,11 +10,11 @@ import { NatsClientModule } from './nats-client/nats.client.module';
 import { NatsClientService } from './nats-client/nats.client.service';
 import { ReporterService } from './services/reporter.service';
 import { DemographicsService } from './services/demo.filtering.service';
-import { ZodValidationPipe } from 'ZodPipe/validation.pipe';
+import { APP_PIPE } from '@nestjs/core';
 
 @Module({
   imports: [PrismaModule, NatsClientModule],
-  controllers: [DemographicsController, EventsController, RevenueController, NatsClientService],
-  providers: [RevenueService, EventsService,ReporterListener, ReporterService, DemographicsService, NatsClientService, ZodValidationPipe],
+  controllers: [DemographicsController, EventsController, RevenueController],
+  providers: [RevenueService, EventsService,ReporterListener, ReporterService, DemographicsService, NatsClientService]
 })
 export class AppModule {}

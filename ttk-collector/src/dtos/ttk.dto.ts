@@ -50,7 +50,7 @@ export const TiktokEngagement = z.union([TiktokEngagementBottomSchema, TiktokEng
 // 🔥 Full Tiktok Event Schema (funnelStage now separate)
 export const TiktokEventSchema = z.object({
   eventId: z.string(),
-  timestamp: z.string(),
+  timestamp: z.string().datetime(),
   source: z.literal("tiktok"),
   funnelStage: FunnelStage, // Separate funnelStage
   eventType: TiktokEventType,
