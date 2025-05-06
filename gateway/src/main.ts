@@ -1,14 +1,24 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module";
+import { Logger } from "@nestjs/common";
+import { collectDefaultMetrics, Registry } from "prom-client";
+import * as http from "http";
 
 async function bootstrap() {
+  const logger = new Logger("Gateway");
+  const registry = new Registry();
+  //collectDefaultMetrics({ registry });
+
   const app = await NestFactory.create(AppModule);
   // app.useGlobalPipes(new ValidationPipe)
-  app.enableShutdownHooks(); 
+  app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 3000);
+  logger.log(`Gateway running (API + metrics)`);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  console.error("Gateway startup error:", err);
+  process.exit(1);
+});
 
 // src/main.ts
 // import { Logger, ValidationPipe } from '@nestjs/common';

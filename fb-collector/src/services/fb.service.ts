@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from './../../prisma/prisma.service';
-import { FacebookEvent } from './../dtos/fb.dto';
-import { DatabaseError } from '../errors/database.error';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "./../../prisma/prisma.service";
+import { FacebookEvent } from "./../dtos/fb.dto";
+import { DatabaseError } from "../errors/database.error";
 
 @Injectable()
 export class FbService {
@@ -10,7 +10,7 @@ export class FbService {
   constructor(private readonly prisma: PrismaService) {}
 
   async saveEvent(data: FacebookEvent): Promise<void> {
-    if (data.source !== 'facebook') {
+    if (data.source !== "facebook") {
       this.logger.warn(`Skipping non-Facebook event: ${data.eventId}`);
       return;
     }
@@ -19,7 +19,7 @@ export class FbService {
       await this.prisma.$transaction(async (tx) => {
         // Check for duplicate event
         const existingEvent = await tx.facebookEvent.findUnique({
-          where: { id: data.eventId }
+          where: { id: data.eventId },
         });
 
         if (existingEvent) {
@@ -42,9 +42,9 @@ export class FbService {
           userCity: data.data.user.location.city,
         };
 
-        if (data.funnelStage === 'top') {
+        if (data.funnelStage === "top") {
           const topEngagement = data.data.engagement;
-          if ('actionTime' in topEngagement) {
+          if ("actionTime" in topEngagement) {
             await tx.facebookEvent.create({
               data: {
                 ...eventData,
@@ -53,14 +53,14 @@ export class FbService {
                     actionTime: new Date(topEngagement.actionTime),
                     referrer: topEngagement.referrer,
                     videoId: topEngagement.videoId || null,
-                  }
-                }
-              }
+                  },
+                },
+              },
             });
           }
         } else {
           const bottomEngagement = data.data.engagement;
-          if ('adId' in bottomEngagement) {
+          if ("adId" in bottomEngagement) {
             await tx.facebookEvent.create({
               data: {
                 ...eventData,
@@ -72,9 +72,9 @@ export class FbService {
                     device: bottomEngagement.device,
                     browser: bottomEngagement.browser,
                     purchaseAmount: bottomEngagement.purchaseAmount || null,
-                  }
-                }
-              }
+                  },
+                },
+              },
             });
           }
         }
@@ -86,7 +86,7 @@ export class FbService {
         error: error.message,
         stack: error.stack,
       });
-      throw new DatabaseError('Failed to save Facebook event', error);
+      throw new DatabaseError("Failed to save Facebook event", error);
     }
   }
 }

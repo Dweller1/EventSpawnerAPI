@@ -14,7 +14,11 @@ x-service-template: &service-template
   networks:
     - event-network
   healthcheck:
-    test: ["CMD-SHELL", "curl -f http://localhost:${PORT}/health/liveness && curl -f http://localhost:${PORT}/health/readiness || exit 1"]
+    test:
+      [
+        "CMD-SHELL",
+        "curl -f http://localhost:${PORT}/health/liveness && curl -f http://localhost:${PORT}/health/readiness || exit 1",
+      ]
     interval: 15s
     timeout: 5s
     retries: 5
@@ -22,7 +26,7 @@ x-service-template: &service-template
   deploy:
     resources:
       limits:
-        cpus: '1'
+        cpus: "1"
         memory: 2gb
   logging:
     driver: json-file
@@ -35,9 +39,9 @@ services:
   # --- Infrastructure Services ---
   nats:
     image: nats:latest
-    ports: 
+    ports:
       - 4222:4222
-    healthcheck: 
+    healthcheck:
       test: ["CMD-SHELL", "nats-ping || exit 1"]
       interval: 10s
       timeout: 3s
@@ -45,10 +49,9 @@ services:
 
   publisher:
     image: andriiuni/events:latest
-    platform: linux/amd64
     environment:
       EVENT_ENDPOINT: http://gateway:3000/webhook
-      PUBLISH_INTERVAL: "5000"  # ms between events
+      PUBLISH_INTERVAL: "5000" # ms between events
     depends_on:
       gateway:
         condition: service_healthy
@@ -56,8 +59,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
-      retries: 3  
-  
+      retries: 3
 
   postgres:
     image: postgres:14-alpine
@@ -85,6 +87,9 @@ services:
     build:
       context: ./gateway
       dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
       args:
         - NODE_ENV=production
     environment:
@@ -103,10 +108,13 @@ services:
       sh -c "./wait-for-it.sh nats:4222 --timeout=30 --strict --                          
              npm run start:prod"
 
-  fb-collector:  # <- Fixed name (removed extra 'f')
+  fb-collector:
     build:
       context: ./fb-collector
       dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
     environment:
       <<: *common-env
       PORT: 4001
@@ -124,13 +132,17 @@ services:
     <<: *service-template
     command: >
       sh -c "./wait-for-it.sh nats:4222 --timeout=30 --strict -- 
-             ./wait-for-it.sh postgres:5432 --timeout=30 --strict -- 
+             ./wait-for-it.sh postgres:5432 --timeout=30 --strict --
+             ./scripts/prisma/migrate.sh &&
              node dist/main.js"
 
   ttk-collector:
     build:
       context: ./ttk-collector
       dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
     environment:
       <<: *common-env
       PORT: 4002
@@ -147,21 +159,26 @@ services:
     command: >
       sh -c "./wait-for-it.sh nats:4222 --timeout=30 --strict -- 
              ./wait-for-it.sh postgres:5432 --timeout=30 --strict -- 
-             npm run migration:deploy && 
+             ./scripts/prisma/migrate.sh &&
              node dist/main.js"
 
   reporter:
     build:
       context: ./reporter
       dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
     environment:
       <<: *common-env
       PORT: 4000
+      METRICS_PORT: 3003
       SERVICE_NAME: reporter
       DATABASE_URL: postgresql://admin:admin@postgres:5432/eventsdb
       NATS_URL: nats://nats:4222
     ports:
       - "4000:4000"
+      - "3003:3003"
     depends_on:
       nats:
         condition: service_healthy
@@ -170,14 +187,53 @@ services:
     <<: *service-template
     command: >
       sh -c "./wait-for-it.sh nats:4222 --timeout=30 --strict -- 
-             ./wait-for-it.sh postgres:5432 --timeout=30 --strict -- 
+             ./wait-for-it.sh postgres:5432 --timeout=30 --strict --
+             ./scripts/prisma/migrate.sh &&
              node dist/main.js"
 
   # --- Monitoring ---
 
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - event-network
+    depends_on:
+      - fb-collector
+      - ttk-collector
+      - gateway
+      - reporter
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+    <<: *service-template
+
+  grafana:
+    image: grafana/grafana
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning/dashboards
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_DEFAULT_THEME: light
+    ports:
+      - "3000:3000"
+    networks:
+      - event-network
+    depends_on:
+      - prometheus
+    <<: *service-template
+
 volumes:
   pgdata:
   nats-data:
+  grafana-storage:
+  prometheus-data:
 
 networks:
   event-network:

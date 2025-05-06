@@ -1,0 +1,87 @@
+{
+  "title": "Reporter Latency by Report Type",
+  "description": "Tracks latency for demographics, events, and revenue reports",
+  "panels": [
+    {
+      "title": "Current Latency (Avg)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(reporter_latency_seconds_sum{report_type=\"demographics\"}[1m])) / sum(rate(reporter_latency_seconds_count{report_type=\"demographics\"}[1m]))",
+          "legendFormat": "Demographics"
+        },
+        {
+          "expr": "sum(rate(reporter_latency_seconds_sum{report_type=\"events\"}[1m])) / sum(rate(reporter_latency_seconds_count{report_type=\"events\"}[1m]))",
+          "legendFormat": "Events"
+        },
+        {
+          "expr": "sum(rate(reporter_latency_seconds_sum{report_type=\"revenue\"}[1m])) / sum(rate(reporter_latency_seconds_count{report_type=\"revenue\"}[1m]))",
+          "legendFormat": "Revenue"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "horizontal"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 1, "color": "yellow" },
+              { "value": 2, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Latency Trends",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(reporter_latency_seconds_bucket{report_type=\"demographics\"}[1m])) by (le))",
+          "legendFormat": "Demographics (P95)"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(reporter_latency_seconds_bucket{report_type=\"events\"}[1m])) by (le))",
+          "legendFormat": "Events (P95)"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(reporter_latency_seconds_bucket{report_type=\"revenue\"}[1m])) by (le))",
+          "legendFormat": "Revenue (P95)"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "list", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "drawStyle": "line"
+          }
+        }
+      }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "report_type",
+        "label": "Report Type",
+        "type": "custom",
+        "query": "demographics, events, revenue",
+        "current": { "selected": true, "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "refresh": "30s"
+}

@@ -1,0 +1,38 @@
+{
+  "title": "Gateway Metrics",
+  "panels": [
+    {
+      "title": "Accepted Events",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "gateway_events_accepted_total",
+          "legendFormat": "Accepted"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 6 }
+    },
+    {
+      "title": "Processed Events",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "gateway_events_processed_total",
+          "legendFormat": "Processed"
+        }
+      ],
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 6 }
+    },
+    {
+      "title": "Failed Events",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "gateway_events_failed_total",
+          "legendFormat": "Failed"
+        }
+      ],
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 6 }
+    }
+  ]
+}

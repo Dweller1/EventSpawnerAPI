@@ -1,0 +1,37 @@
+{
+  "title": "FB Collector Metrics",
+  "panels": [
+    {
+      "title": "Event Rates (1m)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(fb_collector_events_total{status='accepted'}[1m]))",
+          "legendFormat": "Accepted"
+        },
+        {
+          "expr": "sum(rate(fb_collector_events_total{status='processed'}[1m]))",
+          "legendFormat": "Processed"
+        },
+        {
+          "expr": "sum(rate(fb_collector_events_total{status='failed'}[1m]))",
+          "legendFormat": "Failed"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "list" },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        }
+      },
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 }
+    }
+  ]
+}
